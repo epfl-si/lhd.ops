@@ -1,0 +1,305 @@
+- tags: always
+  include_vars: "{{ item }}"
+  with_items:
+    - quay-vars.yml
+    - lhd-vars.yml
+    - storage-vars.yml
+
+- tags: always
+  include_vars:
+    file: quay-secrets.yml
+    name: quay_secrets
+
+- name: PersistentVolumeClaim/lhd_app_documents
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: lhd-app-documents
+        namespace: "{{ inventory_namespace }}"
+      spec:
+        accessModes:
+          - ReadWriteMany
+        resources:
+          requests:
+            storage: 10Gi
+        volumeName: "{{ _volume_name }}"
+        storageClassName: ''
+  vars:
+    _volume_name: >-
+      {{ "svc1172-si-lhd-prod-app" if inventory_deployment_stage == "production"
+      else "svc1172-si-lhd-test-app" }}
+
+- name: ConfigMap/lhd-backend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: lhd-backend
+        namespace: "{{ inventory_namespace }}"
+      data:
+        NODE_ENV: "{{ inventory_environment }}"
+        DOCUMENTS_PATH: "{{ lhd_app_container_documents_dir }}"
+        ALLOWED_GROUPS: LHD_acces_AppGrpU,LHD_acces_lecture_AppGrpU,LHD_acces_admin_AppGrpU,LHD_acces_cosec_AppGrpU
+        API_EPFL_CH_URL: api.epfl.ch
+        CRISTAL_URL: "{{ cristal_url }}"
+        HAZARD_DOCUMENT_FOLDER: hazards/
+        DISPENSATION_DOCUMENT_FOLDER: dispensations
+        ASSESSMENT_DECISION_DOCUMENT_FOLDER: assessment_decision
+        OIDC_BASE_URL: "{{ openid_connect[inventory_environment].base_url }}"
+        OIDC_CLIENT_ID: "{{ openid_connect[inventory_environment].client_id }}"
+        AXS_ALLOWED_IPS: "{{ lhd_secrets.axs.allowedIP }}"
+        AXP_BIO_SIGNATURES_GROUP: LHD_dangers_bio
+        SMTP_HOST: mail.epfl.ch
+        SMTP_PORT: "587"
+        SMTP_USER: lhd@epfl.ch
+        # https://lhdepfl.atlassian.net/browse/LHDV3-79
+        CAE_TO: "{{ lhd_secrets.email.cae_to }}"
+        CAE_CC: "{{ lhd_secrets.email.cae_cc }}"
+        COSEC_BCC: "{{ lhd_secrets.email.cosec_bcc }}"
+        DISPENSATION_CC: "{{ lhd_secrets.email.dispensation_cc }}"
+        APP_BASE_PATH: "https://{{ inventory_web_hostname }}"
+        HAZARD_TYPES_TO_EMAIL_AFTER_UPDATE: Laser,Biological
+        ENVIRONMENT: "{{ inventory_environment }}"
+        CATALYSE_EMAIL: service_catalyse@epfl.ch
+        LIL_URL: "{{ lil_url[inventory_environment] }}"
+        ADMIN_GROUP: LHD_acces_admin_AppGrpU
+        COSEC_GROUP: LHD_acces_cosec_AppGrpU
+        LHD_GROUP: LHD_acces_lecture_AppGrpU
+
+- name: Secret/lhd-backend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: lhd-backend
+        namespace: "{{ inventory_namespace }}"
+      stringData:
+        LHD_API_PASSWORD: "{{ lhd_secrets.api.password }}"
+        LHD_ENCRYPTION_KEY: "{{ lhd_secrets.lhd_encryption_key }}"
+        SNOW_TOKEN: "{{ lhd_secrets.snow.token }}"
+        CATALYSE_TOKEN: "{{ lhd_secrets.catalyse.token }}"
+        AXS_TOKEN: "{{ lhd_secrets.axs.token }}"
+        LHD_DB_URL: "{{ mariadb_connection_string }}"
+        MYSQL_LHD_V2_DBNAME: "{{ lhd_secrets.mysql.lhd_app.dbname | string }}"
+        MYSQL_LHD_V2_HOST: "{{ lhd_secrets.mysql.lhd_app.host | string }}"
+        MYSQL_LHD_V2_PASSWORD: "{{ lhd_secrets.mysql.lhd_app.password | string }}"
+        MYSQL_LHD_V2_PORT: "{{ lhd_secrets.mysql.lhd_app.port | string }}"
+        MYSQL_LHD_V2_USER: "{{ lhd_secrets.mysql.lhd_app.user | string }}"
+
+- name: Deployment/lhd-backend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: lhd-backend
+        namespace: "{{ inventory_namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: lhd-backend
+        template:
+          metadata:
+            labels:
+              app: lhd-backend
+          spec:
+            serviceAccountName: lhd
+            containers:
+              - name: lhd-backend
+                image: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-backend:{{ image_tag }}"
+                imagePullPolicy: Always
+                envFrom:
+                  - configMapRef:
+                      name: lhd-backend
+                  - secretRef:
+                      name: lhd-backend
+                volumeMounts:
+                  - name: lhd-app-documents
+                    mountPath: /var/documents
+                resources:
+                  limits:
+                    memory: 1Gi
+                  requests:
+                    cpu: '{{ _cpu_request }}'
+                    memory: 1Gi
+                ports:
+                  - name: lhd-p-back
+                    containerPort: 3010
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: 3010
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+            volumes:
+              - name: lhd-app-documents
+                persistentVolumeClaim:
+                  claimName: lhd-app-documents
+            imagePullSecrets:
+              - name: "{{ quay_puller_secret_name }}"
+  vars:
+    _cpu_request: "160m"
+
+- name: Service/lhd-backend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: lhd-backend
+        namespace: "{{ inventory_namespace }}"
+        labels:
+          app: lhd-backend
+        annotations:
+          authors: isas-fsd
+      spec:
+        ports:
+          - port: 3010
+            protocol: TCP
+            targetPort: 3010
+        selector:
+          app: lhd-backend
+        type: ClusterIP
+
+- name: ServiceAccount/lhd
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: lhd
+        namespace: "{{ inventory_namespace }}"
+
+- name: Routes
+  with_items:
+    - name: lhd-api
+      host: "{{ inventory_api_hostname }}"
+      path: "/api/auth_check"
+      visibility: >-
+        {{ "public" if inventory_deployment_stage == "production"
+          else "private" }}
+    - name: lhd-backend-axs
+      path: "/axs"
+    - name: lhd-backend-api
+      path: "/api"
+    - name: lhd-backend-files
+      path: "/files"
+    - name: lhd-backend-hazardfile
+      path: "/hazardFile"
+    - name: lhd-backend-graphiql
+      path: "/graphiql"
+    - name: lhd-backend-graphql
+      path: "/graphql"
+    - name: redirect-lil
+      path: "/lhd_cosecs/barcodes"
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        name: "{{ item.name }}"
+        namespace: '{{ inventory_namespace }}'
+        labels:
+          app: "{{ item.name }}"
+          route: "{{ item.visibility | default('private') }}"
+        annotations:
+          haproxy.router.openshift.io/balance: roundrobin
+          haproxy.router.openshift.io/disable_cookies: 'true'
+      spec:
+        host: "{{ item.host | default(inventory_web_hostname) }}"
+        path: "{{ item.path }}"
+        to:
+          kind: Service
+          name: lhd-backend
+        port:
+          targetPort: 3010
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+
+- name: "CronJobs"
+  when: >-
+    inventory_deployment_stage == "production"
+  with_items:
+    - name: email-alert-expiring-dispensations-cron
+      command:
+       - tsx
+       - cron/dispensationExpiryReminders.ts
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-backend:{{ image_tag }}"
+      schedule: "30 4 * * *"
+    - name: email-alert-expired-dispensations-cron
+      command:
+        - tsx
+        - cron/expiredDispensations.ts
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-backend:{{ image_tag }}"
+      schedule: "0 4 * * *"
+    - name: update-units-from-api
+      command:
+        - Rscript
+        - cron/updateUnitsCron.R
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-migrations:{{ image_tag }}"
+      schedule: "0 1 * * *"
+    - name: update-rooms-from-api
+      command:
+        - Rscript
+        - cron/updateRoomsCron.R
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-migrations:{{ image_tag }}"
+      schedule: "30 1 * * *"
+    - name: update-authorizations-from-api
+      command:
+        - Rscript
+        - cron/updateAuthorizationsCron.R
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-migrations:{{ image_tag }}"
+      schedule: "0 2 * * *"
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: "{{ item.name }}"
+        namespace: "{{ inventory_namespace }}"
+      spec:
+        schedule: "{{ item.schedule }}"
+        timeZone: "Europe/Zurich"
+        jobTemplate:
+          spec:
+            template:
+              metadata:
+                labels:
+                  cron: "{{ item.name }}"
+              spec:
+                serviceAccountName: lhd
+                containers:
+                  - name: "{{ item.name }}"
+                    image: "{{ item.image_name }}"
+                    envFrom:
+                      - configMapRef:
+                          name: lhd-backend
+                      - secretRef:
+                          name: lhd-backend
+                    command: "{{ [item.command[0]] }}"
+                    args: "{{ item.command[1:] }}"
+                    resources:
+                      limits:
+                        memory: 1Gi
+                      requests:
+                        cpu: '{{ _cpu_request }}'
+                        memory: 1Gi
+                imagePullSecrets:
+                  - name: "{{ quay_puller_secret_name }}"
+                restartPolicy: OnFailure
+        concurrencyPolicy: Forbid
+  vars:
+    _cpu_request: "160m"

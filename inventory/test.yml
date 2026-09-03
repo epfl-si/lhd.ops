@@ -1,0 +1,12 @@
+namespaces:
+  "hosts":
+    namespace/svc1172t-labhazdir:
+      inventory_namespace: svc1172t-labhazdir
+      inventory_deployment_stage: test
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      inventory_web_hostname: lhd-test.epfl.ch
+      inventory_api_hostname: lhd-api-test.epfl.ch
+      inventory_environment: test
+      inventory_openshift:
+        domain: ocpitst0001.xaas.epfl.ch

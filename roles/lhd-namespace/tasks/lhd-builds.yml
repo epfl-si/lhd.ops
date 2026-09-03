@@ -1,0 +1,127 @@
+- tags: always
+  include_vars: quay-vars.yml
+
+- tags: always
+  include_vars:
+    file: quay-secrets.yml
+    name: quay_secrets
+
+- name: "`Secret/{{ quay_puller_robot_account_name }}`"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ quay_puller_secret_name }}"
+        namespace: "{{ inventory_namespace }}"
+      type: kubernetes.io/dockerconfigjson
+      stringData:
+        .dockerconfigjson: >-
+          {{ lookup("epfl_si.quay.robot_account", quay_organization, quay_puller_robot_account_name,
+                                                  token=quay_botfather_token)
+          | epfl_si.quay.format_docker_config_json | string }}
+
+- name: "`Secret/{{ quay_builder_secret_name }}`"
+  when: >-
+    inventory_deployment_stage == "test"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ quay_builder_secret_name }}"
+        namespace: "{{ inventory_namespace }}"
+      type: kubernetes.io/dockerconfigjson
+      stringData:
+        .dockerconfigjson: >-
+          {{ lookup("epfl_si.quay.robot_account", quay_organization, builder_robot_account_name,
+                                                  token=quay_botfather_token)
+          | epfl_si.quay.format_docker_config_json | string }}
+
+- name: ServiceAccount/builder
+  when: >-
+    inventory_deployment_stage == "test"
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: builder
+        namespace: "{{ inventory_namespace }}"
+      secrets:
+        - name: "{{ quay_builder_secret_name }}"
+      imagePullSecrets:
+        - name: "{{ quay_builder_secret_name }}"
+
+- name: Mirror the Node:20 base image
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: ../../tasks/_mirror.yml
+  vars:
+    mirror_name: "node"
+    mirror_from: "docker.io/library/node"
+    mirror_tags: ["20"]
+
+- name: Mirror the R base image
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: ../../tasks/_mirror.yml
+  vars:
+    mirror_name: "r-base"
+    mirror_from: "docker.io/library/r-base"
+    mirror_tags: ["latest"]
+
+- name: Build lhd-frontend
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: _build.yml
+  vars:
+    build_name: lhd-frontend
+    build_description: LHD frontend application
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/node:20"
+    build_source:
+      type: Git
+      git:
+        uri: "https://github.com/epfl-si/lhd.frontend"
+        ref: feature/exports
+    build_rebuild_tags:
+      - lhd.rebuild
+
+- name: Build lhd-backend
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: _build.yml
+  vars:
+    build_name: lhd-backend
+    build_description: LHD backend application
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/node:20"
+    build_source:
+      type: Git
+      git:
+        uri: "https://github.com/epfl-si/lhd.graphql"
+        ref: fix/files
+    build_rebuild_tags:
+      - lhd.rebuild
+
+- name: Build R
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: _build.yml
+  vars:
+    build_name: lhd-migrations
+    build_description: LHD migration and cron scripts
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/r-base"
+    build_source:
+      type: Git
+      git:
+        uri: "https://github.com/epfl-si/lhd3-migration"
+    build_rebuild_tags:
+      - lhd.rebuild

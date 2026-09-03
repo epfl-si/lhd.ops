@@ -1,0 +1,122 @@
+- tags: always
+  include_vars: "{{ item }}"
+  with_items:
+    - quay-vars.yml
+    - lhd-vars.yml
+
+- name: ConfigMap/lhd-frontend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: lhd-frontend
+        namespace: "{{ inventory_namespace }}"
+      data:
+        12factor.json: >-
+          {{ _12factor | to_json }}
+  vars:
+    _12factor:
+      NODE_ENV: "{{ inventory_environment }}"
+      REACT_APP_AUTH_SERVER_URL: "{{ openid_connect[inventory_environment].base_url }}"
+      REACT_APP_HOMEPAGE_URL: "https://{{ inventory_web_hostname }}/"
+      REACT_APP_GRAPHQL_ENDPOINT_URL: "https://{{ inventory_web_hostname }}/graphql"
+      REACT_APP_ENDPOINT_URL: "https://{{ inventory_web_hostname }}"
+      OIDC_SCOPE: "openid {{ openid_connect[inventory_environment].client_id }}/.default"
+      OIDC_CLIENT_ID: "{{ openid_connect[inventory_environment].client_id }}"
+      LIL_URL: "{{ lil_url[inventory_environment] }}"
+      CRISTAL_URL: "{{ cristal_url }}"
+
+- name: Deployment/lhd-frontend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: lhd-frontend
+        namespace: "{{ inventory_namespace }}"
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: lhd-frontend
+        template:
+          metadata:
+            labels:
+              app: lhd-frontend
+          spec:
+            serviceAccountName: lhd
+            containers:
+              - name: lhd-frontend
+                image: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-frontend:{{ image_tag }}"
+                imagePullPolicy: Always
+                volumeMounts:
+                  - name: 12factor
+                    mountPath: /config
+                resources:
+                  limits:
+                    memory: 256Mi
+                  requests:
+                    cpu: '{{ _cpu_request }}'
+                    memory: 256Mi
+                ports:
+                  - name: lhd-p-front
+                    containerPort: 3000
+            volumes:
+              - name: 12factor
+                configMap:
+                  name: lhd-frontend
+            imagePullSecrets:
+              - name: "{{ quay_puller_secret_name }}"
+  vars:
+    _cpu_request: "160m"
+
+- name: Service/lhd-frontend
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: lhd-frontend
+        namespace: "{{ inventory_namespace }}"
+        labels:
+          app: lhd-frontend
+        annotations:
+          authors: isas-fsd
+      spec:
+        ports:
+          - port: 3000
+            protocol: TCP
+            targetPort: 3000
+        selector:
+          app: lhd-frontend
+        type: ClusterIP
+
+- name: Route/lhd-frontend
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Route
+      metadata:
+        name: lhd-frontend
+        namespace: '{{ inventory_namespace }}'
+        labels:
+          app: lhd-frontend
+          route: private
+        annotations:
+          haproxy.router.openshift.io/balance: roundrobin
+          haproxy.router.openshift.io/disable_cookies: 'true'
+      spec:
+        host: "{{ inventory_web_hostname }}"
+        path: /
+        to:
+          kind: Service
+          name: lhd-frontend
+        port:
+          targetPort: 3000
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
