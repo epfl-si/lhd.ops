@@ -50,6 +50,7 @@
         HAZARD_DOCUMENT_FOLDER: hazards/
         DISPENSATION_DOCUMENT_FOLDER: dispensations
         ASSESSMENT_DECISION_DOCUMENT_FOLDER: assessment_decision
+        AUTHORIZATION_DOCUMENT_FOLDER: authorizations
         OIDC_BASE_URL: "{{ openid_connect[inventory_environment].base_url }}"
         OIDC_CLIENT_ID: "{{ openid_connect[inventory_environment].client_id }}"
         AXS_ALLOWED_IPS: "{{ lhd_secrets.axs.allowedIP }}"
