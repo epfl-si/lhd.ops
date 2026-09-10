@@ -188,9 +188,7 @@
     - name: lhd-api
       host: "{{ inventory_api_hostname }}"
       path: "/api/auth_check"
-      visibility: >-
-        {{ "public" if inventory_deployment_stage == "production"
-          else "private" }}
+      visibility: "public"
     - name: lhd-backend-axs
       path: "/axs"
     - name: lhd-backend-api
