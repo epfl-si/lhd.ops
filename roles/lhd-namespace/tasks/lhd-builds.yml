@@ -89,7 +89,7 @@
       type: Git
       git:
         uri: "https://github.com/epfl-si/lhd.frontend"
-        ref: feature/exports
+        ref: master
     build_rebuild_tags:
       - lhd.rebuild
 
@@ -106,7 +106,7 @@
       type: Git
       git:
         uri: "https://github.com/epfl-si/lhd.graphql"
-        ref: fix/files
+        ref: master
     build_rebuild_tags:
       - lhd.rebuild
 
