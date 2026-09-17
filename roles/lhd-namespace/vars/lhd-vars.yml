@@ -1,7 +1,7 @@
 lhd_app_container_documents_dir: /var/documents
 
-mariadb_connection_string: >-
-  mysql://{{ lhd_secrets.mysql.lhd_app.user }}:{{ lhd_secrets.mysql.lhd_app.password }}@{{ lhd_secrets.mysql.lhd_app.host }}:{{ lhd_secrets.mysql.lhd_app.port }}/{{ lhd_secrets.mysql.lhd_app.dbname }}
+postgresql_connection_string: >-
+  postgresql://{{ lhd_secrets.postgresql.user }}:{{ lhd_secrets.postgresql.password }}@{{ lhd_secrets.postgresql.host }}:{{ lhd_secrets.postgresql.port }}/{{ lhd_secrets.postgresql.name }}?schema=public
 
 cristal_url: >-
   {{
