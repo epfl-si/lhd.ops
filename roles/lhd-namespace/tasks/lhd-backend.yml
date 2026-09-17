@@ -88,12 +88,12 @@
         SNOW_TOKEN: "{{ lhd_secrets.snow.token }}"
         CATALYSE_TOKEN: "{{ lhd_secrets.catalyse.token }}"
         AXS_TOKEN: "{{ lhd_secrets.axs.token }}"
-        LHD_DB_URL: "{{ mariadb_connection_string }}"
-        MYSQL_LHD_V2_DBNAME: "{{ lhd_secrets.mysql.lhd_app.dbname | string }}"
-        MYSQL_LHD_V2_HOST: "{{ lhd_secrets.mysql.lhd_app.host | string }}"
-        MYSQL_LHD_V2_PASSWORD: "{{ lhd_secrets.mysql.lhd_app.password | string }}"
-        MYSQL_LHD_V2_PORT: "{{ lhd_secrets.mysql.lhd_app.port | string }}"
-        MYSQL_LHD_V2_USER: "{{ lhd_secrets.mysql.lhd_app.user | string }}"
+        LHD_DB_URL: "{{ postgresql_connection_string }}"
+        POSTGRESQL_DBNAME: "{{ lhd_secrets.postgresql.name | string }}"
+        POSTGRESQL_HOST: "{{ lhd_secrets.postgresql.host | string }}"
+        POSTGRESQL_PASSWORD: "{{ lhd_secrets.postgresql.password | string }}"
+        POSTGRESQL_PORT: "{{ lhd_secrets.postgresql.port | string }}"
+        POSTGRESQL_USER: "{{ lhd_secrets.postgresql.user | string }}"
 
 - name: Deployment/lhd-backend
   kubernetes.core.k8s:
