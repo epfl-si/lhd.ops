@@ -74,7 +74,7 @@
   vars:
     mirror_name: "r-ver"
     mirror_from: "docker.io/rocker/r-ver"
-    mirror_tags: ["4.5.1"]
+    mirror_tags: ["4.6"]
 
 - name: Build lhd-frontend
   when: >-
@@ -118,7 +118,7 @@
   vars:
     build_name: lhd-migrations
     build_description: LHD migration and cron scripts
-    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/r-ver:4.5.1"
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/r-ver:4.6.0"
     build_source:
       type: Git
       git:
