@@ -105,8 +105,8 @@
     build_source:
       type: Git
       git:
-        uri: "https://github.com/epfl-si/lhd.graphql"
-        ref: master
+        uri: "https://github.com/epfl-si/lhd.backend"
+        ref: main
     build_rebuild_tags:
       - lhd.rebuild
 
