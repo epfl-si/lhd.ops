@@ -135,11 +135,11 @@
                     memory: 1Gi
                 ports:
                   - name: lhd-p-back
-                    containerPort: 3010
+                    containerPort: 3020
                 livenessProbe:
                   httpGet:
                     path: /health
-                    port: 3010
+                    port: 3020
                   initialDelaySeconds: 10
                   periodSeconds: 10
             volumes:
@@ -166,9 +166,9 @@
           authors: isas-fsd
       spec:
         ports:
-          - port: 3010
+          - port: 3020
             protocol: TCP
-            targetPort: 3010
+            targetPort: 3020
         selector:
           app: lhd-backend
         type: ClusterIP
@@ -223,7 +223,7 @@
           kind: Service
           name: lhd-backend
         port:
-          targetPort: 3010
+          targetPort: 3020
         tls:
           termination: edge
           insecureEdgeTerminationPolicy: Redirect
