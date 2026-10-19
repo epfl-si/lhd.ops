@@ -232,6 +232,12 @@
   when: >-
     inventory_deployment_stage == "production"
   with_items:
+    - name: expired-profiles-cron
+      command:
+        - tsx
+        - cron/expiredProfiles.ts
+      image_name: "{{ ansible_quay_hostname }}/{{ quay_organization }}/lhd-backend:{{ image_tag }}"
+      schedule: "30 3 * * *"
     - name: email-alert-expiring-dispensations-cron
       command:
        - tsx
