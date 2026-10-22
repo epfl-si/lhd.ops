@@ -18,6 +18,14 @@
     - lhd.builds.k8s
 
 - include_tasks:
+    file: lhd-postgresql.yml
+    apply:
+      tags:
+        - lhd.postgresql.k8s
+  tags:
+    - lhd.postgresql.k8s
+
+- include_tasks:
     file: lhd-backend.yml
     apply:
       tags:

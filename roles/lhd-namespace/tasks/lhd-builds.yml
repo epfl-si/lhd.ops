@@ -76,6 +76,16 @@
     mirror_from: "docker.io/rocker/r-ver"
     mirror_tags: ["4.6"]
 
+- name: Mirror the PostgreSQL base image
+  when: >-
+    inventory_deployment_stage == "test"
+  include_tasks:
+    file: ../../tasks/_mirror.yml
+  vars:
+    mirror_name: "postgresql"
+    mirror_from: "ghcr.io/cloudnative-pg/postgresql"
+    mirror_tags: ["17.5"]
+
 - name: Build lhd-frontend
   when: >-
     inventory_deployment_stage == "test"

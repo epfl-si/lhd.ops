@@ -1,0 +1,19 @@
+resources:
+  database:
+    test:
+      storage: 10Gi
+      replicas: 3
+      cpu: 200m
+      memory: 512Mi
+    production:
+      storage: 10Gi
+      replicas: 3
+      cpu: 200m
+      memory: 512Mi
+
+database:
+  cluster: lhd-postgres
+  name: lhd
+  port: 5432
+  user: lhd
+  host: lhd-postgres-rw
