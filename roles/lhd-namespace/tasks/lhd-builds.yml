@@ -56,7 +56,7 @@
       imagePullSecrets:
         - name: "{{ quay_builder_secret_name }}"
 
-- name: Mirror the Node:20 base image
+- name: Mirror the Node:20/26 base image
   when: >-
     inventory_deployment_stage == "test"
   include_tasks:
@@ -64,7 +64,7 @@
   vars:
     mirror_name: "node"
     mirror_from: "docker.io/library/node"
-    mirror_tags: ["20"]
+    mirror_tags: ["20","26"]
 
 - name: Mirror the R base image
   when: >-
@@ -101,7 +101,7 @@
   vars:
     build_name: lhd-backend
     build_description: LHD backend application
-    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/node:20"
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/node:26"
     build_source:
       type: Git
       git:
