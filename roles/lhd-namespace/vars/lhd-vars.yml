@@ -1,7 +1,7 @@
 lhd_app_container_documents_dir: /var/documents
 
 postgresql_connection_string: >-
-  postgresql://{{ lhd_secrets.postgresql.user }}:{{ lhd_secrets.postgresql.password }}@{{ lhd_secrets.postgresql.host }}:{{ lhd_secrets.postgresql.port }}/{{ lhd_secrets.postgresql.name }}?schema=public
+  postgresql://{{ database.user }}:{{ lhd_secrets.postgresql_oc.password }}@{{ database.host }}:{{ database.port }}/{{ database.name }}?schema=public
 
 cristal_url: >-
   {{
