@@ -5,7 +5,7 @@
     - postgresql-vars.yml
     - quay-vars.yml
 
-- name: Create S3 credentials secret
+- name: S3 credentials secret
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
@@ -23,7 +23,7 @@
         AWS_ACCESS_KEY_ID: "{{ lhd_secrets.s3.access_key_id }}"
         AWS_SECRET_ACCESS_KEY: "{{ lhd_secrets.s3.access_key_secret }}"
 
-- name: Create database credentials secret
+- name: Database credentials secret
   kubernetes.core.k8s:
     definition:
       apiVersion: v1
@@ -41,7 +41,7 @@
         password: "{{ lhd_secrets.postgresql_oc.password }}"
         database: "{{ database.name }}"
 
-- name: Deploy PostgreSQL cluster
+- name: PostgreSQL cluster
   kubernetes.core.k8s:
     definition:
       apiVersion: postgresql.cnpg.io/v1
@@ -98,7 +98,7 @@
               passwordSecret:
                 name: db-credentials
 
-- name: Create database
+- name: Database
   kubernetes.core.k8s:
     definition:
       apiVersion: postgresql.cnpg.io/v1
@@ -115,7 +115,7 @@
         cluster:
           name: "{{ database.cluster }}"
 
-- name: Create scheduled backup
+- name: Scheduled backup
   kubernetes.core.k8s:
     definition:
       apiVersion: postgresql.cnpg.io/v1
