@@ -57,6 +57,8 @@
         imagePullSecrets:
           - name: "{{ quay_puller_secret_name }}"
         enablePDB: false
+        monitoring:
+          enablePodMonitor: true
         instances: "{{ resources.database[inventory_deployment_stage].replicas | int }}"
         storage:
           size: "{{ resources.database[inventory_deployment_stage].storage }}"
