@@ -128,10 +128,11 @@
   vars:
     build_name: lhd-migrations
     build_description: LHD migration and cron scripts
-    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/r-ver:4.6.0"
+    build_base: "{{ ansible_quay_hostname }}/{{ quay_organization }}/r-ver:4.6"
     build_source:
       type: Git
       git:
         uri: "https://github.com/epfl-si/lhd3-migration"
+        ref: main
     build_rebuild_tags:
       - lhd.rebuild
